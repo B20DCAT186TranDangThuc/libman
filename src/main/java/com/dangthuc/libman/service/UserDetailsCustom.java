@@ -19,12 +19,16 @@ public class UserDetailsCustom implements UserDetailsService {
     private ThanhVienService thanhVienService;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String username) {
+
         ThanhVien thanhVien = this.thanhVienService.getThanhVienByUsername(username);
+        if(thanhVien == null) {
+            throw new UsernameNotFoundException(username);
+        }
         return new User(
                 thanhVien.getUsername(),
                 thanhVien.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + thanhVien.getRole()))
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_"))
         );
     }
 }

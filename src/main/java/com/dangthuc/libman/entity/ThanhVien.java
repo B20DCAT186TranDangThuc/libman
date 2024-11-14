@@ -37,6 +37,4 @@ public class ThanhVien {
     @Column(name = "phone")
     private String phone;
 
-    @Column(name = "role", nullable = false)
-    private String role;
 }

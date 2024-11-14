@@ -23,5 +23,4 @@ public class ThanhVienForm {
     private String diaChi;
     private String email;
     private String phone;
-    private String role;
 }
