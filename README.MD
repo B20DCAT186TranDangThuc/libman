@@ -139,3 +139,71 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
         };
     }
 ```
+## Exception JWT
+1. Xử lý exception khi đăng nhập sai
+```java
+@ExceptionHandler(value = {
+            NullPointerException.class,
+            AuthenticationException.class
+    })
+    public ResponseEntity<RestResponse<Object>> handleIdInvalidException(Exception ex) {
+        RestResponse<Object> res = new RestResponse<>();
+        res.setStatusCode(HttpStatus.BAD_REQUEST.value());
+        res.setError(ex.getMessage());
+        res.setMessage("Thong tin tai khoan ko hop le");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(res);
+    }
+```
+bắt exception trong hàm loadUserByUsername:
+```java
+if(thanhVien == null) {
+    throw new UsernameNotFoundException(username);
+}
+```
+2. Exception JWT.
+- add to SecurityFilterChain
+```java
+http.exceptionHandling(
+        exceptions -> exceptions.authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+        .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
+        )
+```
+- create class implements AuthenticationEntryPoint
+```java
+@Component
+public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
+
+    private final AuthenticationEntryPoint delegate = new BearerTokenAuthenticationEntryPoint();
+
+    private final ObjectMapper mapper;
+
+    public CustomAuthenticationEntryPoint(ObjectMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    @Override
+    public void commence(HttpServletRequest request,
+                         HttpServletResponse response,
+                         AuthenticationException authException) throws IOException, ServletException {
+        this.delegate.commence(request, response, authException);
+        response.setContentType("application/json;charset=UTF-8");
+
+        RestResponse<Object> res = new RestResponse<Object>();
+        res.setStatusCode(HttpStatus.UNAUTHORIZED.value());
+
+        String errorMessage = Optional.ofNullable(authException.getCause()) // NULL
+                .map(Throwable::getMessage)
+                .orElse(authException.getMessage());
+        res.setError(errorMessage);
+
+        res.setMessage("Token không hợp lệ (hết hạn, không đúng định dạng, hoặc không truyền JWT ở header)...");
+
+        mapper.writeValue(response.getWriter(), res);
+    }
+}
+```
+- add class to SecurityFilterChain
+```java
+http.oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())
+        .authenticationEntryPoint(customAuthenticationEntryPoint))
+```
